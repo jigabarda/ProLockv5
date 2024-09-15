@@ -11,6 +11,7 @@ import requests
 from datetime import datetime, timedelta
 import pyttsx3  # Import pyttsx3 for text-to-speech
 
+
 # Define get_next_fingerprint_id function
 def get_next_fingerprint_id():
     """Fetch the next available fingerprint ID from the sensor storage."""
@@ -19,6 +20,7 @@ def get_next_fingerprint_id():
         if finger.load_model(i) != adafruit_fingerprint.OK:
             return i
     return max_ids + 1  # This should not happen if the sensor's capacity is not exceeded
+
 
 # API URLs for Fingerprint, NFC, and Current Date-Time
 FINGERPRINT_API_URL = "https://prolocklogger.pro/api/getuserbyfingerprint/"
@@ -42,7 +44,6 @@ FACULTIES_URL = f'{API_URL}/users/role/2'
 ENROLL_URL = f'{API_URL}/users/update-fingerprint'
 ADMIN_URL = f'{API_URL}/admin/role/1'
 
-
 # GPIO pin configuration for the solenoid lock and buzzer
 SOLENOID_PIN = 17
 BUZZER_PIN = 27
@@ -59,6 +60,7 @@ finger = adafruit_fingerprint.Adafruit_Fingerprint(uart)
 # Initialize the next fingerprint ID globally
 next_fingerprint_id = get_next_fingerprint_id()  # Call the function here
 
+
 # Initialize Tkinter window
 def center_window(window, width, height):
     screen_width = window.winfo_screenwidth()
@@ -66,6 +68,7 @@ def center_window(window, width, height):
     x = (screen_width // 2) - (width // 2)
     y = (screen_height // 2) - (height // 2)
     window.geometry(f'{width}x{height}+{x}+{y}')
+
 
 class FingerprintEnrollment:
 
@@ -78,16 +81,15 @@ class FingerprintEnrollment:
         self.canvas = tk.Canvas(self.frame, bg='#2D3F7C')
         self.canvas.pack(fill="both", expand=True)
 
-        
         # Centering the panel within the canvas
         panel = tk.Frame(self.canvas, bg='#F6F5FB')
         panel.place(relx=0.5, rely=0.5, anchor='center', width=1100, height=700)  # Adjust height as neede
-    
+
         # Create the heading frame to organize images and heading text
         heading_frame = ttk.Frame(panel, padding="10", style="ContainerFrame.TFrame")
         heading_frame.pack(fill="x")
-        
-       # Load and place the left image as a button with command to open fingerprint enrollment
+
+        # Load and place the left image as a button with command to open fingerprint enrollment
         left_image_path = "prolockk.png"  # Replace with your left image file path
         left_image = Image.open(left_image_path).resize((170, 50))
         left_photo = ImageTk.PhotoImage(left_image)
@@ -100,12 +102,13 @@ class FingerprintEnrollment:
         )
         left_image_button.image = left_photo  # Keep a reference to avoid garbage collection
         left_image_button.pack(side="left", padx=1)
-        
+
         # Define custom fonts
         heading_font = font.Font(family="Helvetica", size=16, weight="bold")
-        
+
         # Create the main heading and center it
-        main_heading = tk.Label(panel, text="Faculty Fingerprint Registration", font=heading_font, fg="#000000", bg="#F6F5FB")
+        main_heading = tk.Label(panel, text="Faculty Fingerprint Registration", font=heading_font, fg="#000000",
+                                bg="#F6F5FB")
         main_heading.place(relx=0.5, rely=0.07, anchor="center")  # Center the label in the frame
 
         # Load and place the first right image (40x40)
@@ -129,7 +132,8 @@ class FingerprintEnrollment:
         style.configure("LogsTable.Treeview.Heading", background="#D3D1ED", font=("Helvetica", 10, "bold"))
         style.configure("LogsTable.Treeview", background="#F6F5FB", fieldbackground="#F6F5FB", rowheight=25)
         style.configure("ContainerFrame.TFrame", background="#F6F5FB")
-        style.configure("Vertical.TScrollbar", background="#D3D1ED", troughcolor="#D3D1ED", bordercolor="#D3D1ED", arrowcolor="#000000")
+        style.configure("Vertical.TScrollbar", background="#D3D1ED", troughcolor="#D3D1ED", bordercolor="#D3D1ED",
+                        arrowcolor="#000000")
 
         # Treeview for displaying faculty and admin data with Name and Email columns only
         columns = ("name", "email")
@@ -142,14 +146,15 @@ class FingerprintEnrollment:
         self.tree.heading("name", text="Name")
         self.tree.heading("email", text="Email")
         self.tree.configure(height=10)  # Number of visible rows
-    
+
         # Create a vertical scrollbar and link it to the Treeview
         self.scrollbar = ttk.Scrollbar(panel, orient="vertical", command=self.tree.yview, style="Vertical.TScrollbar")
         self.tree.configure(yscrollcommand=self.scrollbar.set)
 
         # Place the Treeview and scrollbar within the panel
         self.tree.place(relx=0.5, rely=0.4, anchor='center')
-        self.scrollbar.place(relx=0.83, rely=0.4, anchor='center', relheight=0.38)  # Adjust relheight to match the Treeview height
+        self.scrollbar.place(relx=0.83, rely=0.4, anchor='center',
+                             relheight=0.38)  # Adjust relheight to match the Treeview height
 
         # Font setup for buttons
         bold_font = font.Font(size=10, weight="bold")
@@ -159,12 +164,16 @@ class FingerprintEnrollment:
         button_spacing = 0.10  # Relative spacing between buttons
 
         # Refresh Button
-        refresh_button = tk.Button(panel, text="Refresh Data", font=bold_font, width=20, height=2, bg="#D3D1ED", command=self.refresh_table)
-        refresh_button.place(relx=0.39, rely=button_y_start, anchor='center')  # Position left side of center within panel
+        refresh_button = tk.Button(panel, text="Refresh Data", font=bold_font, width=20, height=2, bg="#D3D1ED",
+                                   command=self.refresh_table)
+        refresh_button.place(relx=0.39, rely=button_y_start,
+                             anchor='center')  # Position left side of center within panel
 
         # Enroll Button
-        enroll_button = tk.Button(panel, text="Enroll Fingerprint", font=bold_font, width=20, height=2, bg="#D3D1ED", command=self.on_enroll_button_click)
-        enroll_button.place(relx=0.61, rely=button_y_start, anchor='center')  # Position right side of center within panel
+        enroll_button = tk.Button(panel, text="Enroll Fingerprint", font=bold_font, width=20, height=2, bg="#D3D1ED",
+                                  command=self.on_enroll_button_click)
+        enroll_button.place(relx=0.61, rely=button_y_start,
+                            anchor='center')  # Position right side of center within panel
 
         # "Back to Main" Button
         # back_button = tk.Button(panel, text="Back to Main", font=bold_font, width=20, height=2, command=self.back_to_attendance)
@@ -186,7 +195,6 @@ class FingerprintEnrollment:
         self.hide()
         self.attendance_app.show()
 
-
     def refresh_table(self):
         """Refresh the table with data from the Laravel API."""
         # Clear existing rows
@@ -197,13 +205,12 @@ class FingerprintEnrollment:
         faculty_data = self.fetch_faculty_data()
         for faculty in faculty_data:
             self.tree.insert("", tk.END, values=(faculty['name'], faculty['email']))
-        
+
         # Fetch and insert admin data
         admin_data = self.fetch_admin_data()
         for admin in admin_data:
             self.tree.insert("", tk.END, values=(admin['name'], admin['email']))
-            
-            
+
     def fetch_faculty_data(self):
         """Fetch faculty data from the Laravel API, excluding those with exactly two or more registered fingerprint IDs."""
         try:
@@ -211,7 +218,7 @@ class FingerprintEnrollment:
             response.raise_for_status()
             data = response.json()
             filtered_data = [
-                faculty for faculty in data 
+                faculty for faculty in data
                 if faculty.get('fingerprint_id') is None or len(faculty.get('fingerprint_id', [])) < 2
             ]
             return filtered_data
@@ -227,7 +234,7 @@ class FingerprintEnrollment:
             response.raise_for_status()
             data = response.json()
             filtered_data = [
-                admin for admin in data 
+                admin for admin in data
                 if admin.get('fingerprint_id') is None or len(admin.get('fingerprint_id', [])) < 2
             ]
             return filtered_data
@@ -339,12 +346,13 @@ class FingerprintEnrollment:
         except requests.RequestException as e:
             messagebox.showerror("Error", f"Error posting fingerprint data: {e}")
 
+
 class AttendanceApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Fingerprint and NFC Reader")
         self.root.attributes("-fullscreen", True)  # Set the window to full screen
-        
+
         # Add key binding to exit full screen
         self.root.bind("<Escape>", self.exit_full_screen)
 
@@ -405,7 +413,8 @@ class AttendanceApp:
         center_frame.pack(side="left", fill="x", expand=True)
 
         # Create the main heading and center it
-        main_heading = tk.Label(center_frame, text="Fingerprint and RFID Attendance System", font=heading_font, fg="#000000", bg="#F6F5FB")
+        main_heading = tk.Label(center_frame, text="Fingerprint and RFID Attendance System", font=heading_font,
+                                fg="#000000", bg="#F6F5FB")
         main_heading.pack(anchor="center")  # Center the label in the frame
 
         # Load and place the first right image (40x40)
@@ -431,7 +440,8 @@ class AttendanceApp:
         # Fingerprint frame
         left_frame = ttk.Frame(top_frame, padding="10", style="ContainerFrame.TFrame")
         left_frame.pack(side="left", fill="y", expand=True)
-        fingerprint_label = ttk.Label(left_frame, text="Fingerprint Sensor", font=("Arial", 16, "bold"), background="#F6F5FB")
+        fingerprint_label = ttk.Label(left_frame, text="Fingerprint Sensor", font=("Arial", 16, "bold"),
+                                      background="#F6F5FB")
         fingerprint_label.pack(pady=20)
 
         # Load and resize an image
@@ -460,7 +470,8 @@ class AttendanceApp:
         self.section_entry = self.create_label_entry(right_frame, "Section:", label_font)
 
         # Error Message Label
-        self.error_label = tk.Label(self.main_frame, text="", font=("Helvetica", 20, "bold", "italic"), foreground="green", bg="#000000")  # Use self.main_frame
+        self.error_label = tk.Label(self.main_frame, text="", font=("Helvetica", 20, "bold", "italic"),
+                                    foreground="green", bg="#000000")  # Use self.main_frame
         self.error_label.pack(pady=10)
 
         # Logs Table
@@ -470,8 +481,8 @@ class AttendanceApp:
         self.fetch_recent_logs()
 
         # Button to go to Fingerprint Enrollment
-        #enrollment_button = tk.Button(self.main_frame, text="Go to Fingerprint Enrollment", command=self.open_fingerprint_enrollment)  # Use self.main_frame
-        #enrollment_button.pack(pady=20)
+        # enrollment_button = tk.Button(self.main_frame, text="Go to Fingerprint Enrollment", command=self.open_fingerprint_enrollment)  # Use self.main_frame
+        # enrollment_button.pack(pady=20)
 
         # Initialize NFC reader
         try:
@@ -500,17 +511,17 @@ class AttendanceApp:
 
         # Handle window close event
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
-        
+
     def update_clock(self):
         """Update the clock label with the current time."""
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.clock_label.config(text=current_time)
         self.root.after(1000, self.update_clock)  # Update the
-        
+
     def exit_full_screen(self, event=None):
         """Exit full screen mode."""
         self.root.attributes("-fullscreen", False)
-        
+
     def show(self):
         self.main_frame.pack(fill="both", expand=True)
 
@@ -530,11 +541,12 @@ class AttendanceApp:
         return entry
 
     def create_logs_table(self):
-          # Create a new style for the Treeview with background color set to #D3D1ED
+        # Create a new style for the Treeview with background color set to #D3D1ED
         style = ttk.Style()
         style.configure("LogsTable.Treeview.Heading", background="#D3D1ED", font=("Helvetica", 10, "bold"))
         style.configure("LogsTable.Treeview", background="#F6F5FB", fieldbackground="#F6F5FB", rowheight=25)
-        style.map("LogsTable.Treeview", background=[('selected', '#B0B0E0')])  # Optional: set a different color for selected rows
+        style.map("LogsTable.Treeview",
+                  background=[('selected', '#B0B0E0')])  # Optional: set a different color for selected rows
         table_frame = ttk.Frame(self.main_frame, padding="10", style="ContainerFrame.TFrame")
         table_frame.pack(side="bottom", fill="both", expand=True)
         columns = ("Date", "Name", "PC", "Student Number", "Year", "Section", "Faculty", "Time-in", "Time-out")
@@ -608,17 +620,17 @@ class AttendanceApp:
             return None
 
     def update_current_date_time(self):
-            """Fetch and update the current date and time in the label."""
-            current_time_data = self.fetch_current_date_time()
-            if current_time_data:
-                current_day = current_time_data.get('day_of_week', 'Unknown Day')
-                current_time = current_time_data.get('current_time', 'Unknown Time')
-                self.date_time_label.config(text=f"{current_day}, {current_time}")
-            else:
-                self.date_time_label.config(text="Failed to fetch current date and time")
-            
-            # Update the current date and time every minute
-            self.root.after(60000, self.update_current_date_time)
+        """Fetch and update the current date and time in the label."""
+        current_time_data = self.fetch_current_date_time()
+        if current_time_data:
+            current_day = current_time_data.get('day_of_week', 'Unknown Day')
+            current_time = current_time_data.get('current_time', 'Unknown Time')
+            self.date_time_label.config(text=f"{current_day}, {current_time}")
+        else:
+            self.date_time_label.config(text="Failed to fetch current date and time")
+
+        # Update the current date and time every minute
+        self.root.after(60000, self.update_current_date_time)
 
     def get_schedule(self, fingerprint_id):
         try:
@@ -736,11 +748,11 @@ class AttendanceApp:
             print(f"Error recording Time-Out: {e}")
 
     def stop_fingerprint_scanning(self):
-            """Stop the fingerprint scanning thread to avoid conflicts when enrolling fingerprints."""
-            self.running = False  # Stop the scanning loop
-            if self.fingerprint_thread.is_alive():
-                self.fingerprint_thread.join()  # Ensure the thread has stopped
-            print("Fingerprint scanning stopped.")
+        """Stop the fingerprint scanning thread to avoid conflicts when enrolling fingerprints."""
+        self.running = False  # Stop the scanning loop
+        if self.fingerprint_thread.is_alive():
+            self.fingerprint_thread.join()  # Ensure the thread has stopped
+        print("Fingerprint scanning stopped.")
 
     def open_fingerprint_enrollment(self):
         """Navigate to the Fingerprint Enrollment screen."""
@@ -750,11 +762,11 @@ class AttendanceApp:
         self.fingerprint_enrollment.show()  # Show the FingerprintEnrollment frame
 
     def stop_fingerprint_scanning(self):
-            """Stop the fingerprint scanning thread to avoid conflicts when enrolling fingerprints."""
-            self.running = False  # Stop the scanning loop
-            if self.fingerprint_thread.is_alive():
-                self.fingerprint_thread.join()  # Ensure the thread has stopped
-            print("Fingerprint scanning stopped.")
+        """Stop the fingerprint scanning thread to avoid conflicts when enrolling fingerprints."""
+        self.running = False  # Stop the scanning loop
+        if self.fingerprint_thread.is_alive():
+            self.fingerprint_thread.join()  # Ensure the thread has stopped
+        print("Fingerprint scanning stopped.")
 
     def start_fingerprint_scanning(self):
         """Start the fingerprint scanning thread to resume scanning after returning to Attendance."""
@@ -833,7 +845,7 @@ class AttendanceApp:
                     self.update_result("Access denied: Outside of allowed schedule.")
             else:
                 self.update_result("No matching fingerprint found in the database.")
-            
+
             # Allow 5 seconds before the next fingerprint scan
             time.sleep(5)
 
@@ -959,7 +971,6 @@ class AttendanceApp:
         self.year_entry.delete(0, tk.END)
         self.section_entry.delete(0, tk.END)
 
-
     def check_time_in_record(self, rfid_number):
         try:
             url = f'{RECENT_LOGS_URL2}?rfid_number={rfid_number}'
@@ -1024,7 +1035,6 @@ class AttendanceApp:
 
     def clear_result(self):
         self.error_label.config(text="")  # Clear the message
-
 
     def on_closing(self):
         self.running = False

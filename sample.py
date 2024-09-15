@@ -379,17 +379,6 @@ class AttendanceApp:
         self.main_frame.pack(fill="both", expand=True)
         self.main_frame.pack_propagate(False)  # Prevent the frame from resizing to fit its contents
 
-        # Create the clock frame to hold the clock label and place it at the top center
-        clock_frame = ttk.Frame(self.main_frame, style="ContainerFrame.TFrame")
-        clock_frame.pack(fill="x", pady=(0, 20))  # Padding to create some space at the top
-
-        # Real-time clock label
-        self.clock_label = tk.Label(clock_frame, font=("Helvetica", 30), fg="red", bg="#F6F5FB")
-        self.clock_label.pack(anchor="center")  # Center the clock label in the frame
-
-        # Start the clock update
-        self.update_clock()
-
         # Create the heading frame to organize images and heading text
         heading_frame = ttk.Frame(self.main_frame, padding="10", style="ContainerFrame.TFrame")
         heading_frame.pack(fill="x")
@@ -411,6 +400,13 @@ class AttendanceApp:
         # Create a separate frame for the main heading to center it
         center_frame = ttk.Frame(heading_frame, style="ContainerFrame.TFrame")
         center_frame.pack(side="left", fill="x", expand=True)
+
+        # Real-time clock label placed above the main heading
+        self.clock_label = tk.Label(center_frame, font=("Helvetica", 30), fg="red", bg="#F6F5FB")
+        self.clock_label.pack(anchor="center", pady=(0, 10))  # Center the clock label with some padding
+
+        # Start the clock update
+        self.update_clock()
 
         # Create the main heading and center it
         main_heading = tk.Label(center_frame, text="Fingerprint and RFID Attendance System", font=heading_font,

@@ -801,7 +801,7 @@ class AttendanceApp:
 
             print("Searching for fingerprint match...")
             if self.finger.finger_search() != adafruit_fingerprint.OK:
-                print("No matching fingerprint found.")
+                self.update_result("No matching fingerprint found.")
                 failed_attempts += 1
                 self.check_failed_attempts(failed_attempts)  # Check failed attempts and trigger the buzzer if needed
                 time.sleep(5)  # 5 seconds allowance before the next fingerprint attempt
@@ -847,7 +847,7 @@ class AttendanceApp:
 
     def check_failed_attempts(self, failed_attempts):
         if failed_attempts >= 3:
-            self.update_result("Three consecutive failed attempts detected. Activating buzzer.")
+            self.update_result("Three consecutive failed attempts detected. Activating buzzer for 10 seconds.")
             self.trigger_buzzer()
             failed_attempts = 0
 

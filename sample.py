@@ -785,7 +785,7 @@ class AttendanceApp:
             if not self.finger:
                 return
 
-            self.update_result("Waiting for fingerprint image...")
+            self.update_result("Waiting for fingerprint image...", color="green")
             while self.finger.get_image() != adafruit_fingerprint.OK:
                 if not self.running:
                     return
@@ -801,7 +801,7 @@ class AttendanceApp:
 
             print("Searching for fingerprint match...")
             if self.finger.finger_search() != adafruit_fingerprint.OK:
-                self.update_result("No matching fingerprint found.")
+                self.update_result("No matching fingerprint found.", color="red")
                 failed_attempts += 1
                 self.check_failed_attempts(failed_attempts)  # Check failed attempts and trigger the buzzer if needed
                 time.sleep(5)  # 5 seconds allowance before the next fingerprint attempt
@@ -830,24 +830,24 @@ class AttendanceApp:
                         self.unlock_door()
                         self.is_manual_unlock = True  # Set flag to indicate manual unlock
                         self.last_time_in[self.finger.finger_id] = current_time  # Store the time-in time
-                        self.update_result(f"Welcome, {name}! Door unlocked.")
+                        self.update_result(f"Welcome, {name}! Door unlocked.", color="green")
                     else:
                         self.record_time_out_fingerprint(self.finger.finger_id)
                         self.lock_door()
                         self.is_manual_unlock = False  # Reset flag as door is locked again
                         self.record_all_time_out()  # Record time-out for all entries without time-out
-                        self.update_result(f"Goodbye, {name}! Door locked.")
+                        self.update_result(f"Goodbye, {name}! Door locked.", color="green")
                 else:
-                    self.update_result("Access denied: Outside of allowed schedule.")
+                    self.update_result("Access denied: Outside of allowed schedule.", color="red")
             else:
-                self.update_result("No matching fingerprint found in the database.")
+                self.update_result("No matching fingerprint found in the database.", color="red")
 
             # Allow 5 seconds before the next fingerprint scan
             time.sleep(5)
 
     def check_failed_attempts(self, failed_attempts):
         if failed_attempts >= 3:
-            self.update_result("Three consecutive failed attempts detected. Activating buzzer for 10 seconds.")
+            self.update_result("Three or more consecutive failed attempts detected. Activating buzzer for 10 seconds.", color="red")
             self.trigger_buzzer()
             failed_attempts = 0
 
@@ -901,7 +901,7 @@ class AttendanceApp:
                     log.get('time_out', 'N/A')
                 ))
         except requests.RequestException as e:
-            self.update_result(f"Error fetching recent logs: {e}")
+            self.update_result(f"Error fetching recent logs: {e}", color="red")
 
     def read_nfc_loop(self):
         while self.running:
@@ -954,11 +954,11 @@ class AttendanceApp:
         except requests.HTTPError as http_err:
             if response.status_code == 404:
                 self.clear_data()
-                self.update_result("Card is not registered, Please contact the administrator.")
+                self.update_result("Card is not registered, Please contact the administrator.", color="red")
             else:
-                self.update_result(f"HTTP error occurred: {http_err}")
+                self.update_result(f"HTTP error occurred: {http_err}", color="red")
         except requests.RequestException as e:
-            self.update_result(f"Error fetching user info: {e}")
+            self.update_result(f"Error fetching user info: {e}", color="red")
 
     def clear_entries(self):
         """Clear the entries for Student Number, Name, Year, and Section."""
@@ -975,12 +975,12 @@ class AttendanceApp:
             logs = response.json()
             return any(log.get('time_in') and not log.get('time_out') for log in logs)
         except requests.RequestException as e:
-            self.update_result(f"Error checking Time-In record: {e}")
+            self.update_result(f"Error checking Time-In record: {e}", color="red")
             return False
 
     def record_time_in(self, rfid_number, user_name, year):
         if not self.get_rfid_schedule(rfid_number):
-            self.update_result("Access denied: Not within scheduled time.")
+            self.update_result("Access denied: Not within scheduled time.", color="red")
             return
 
         try:
@@ -991,14 +991,14 @@ class AttendanceApp:
             response = requests.put(url)
             response.raise_for_status()
             print("Time-In recorded successfully.")
-            self.update_result("Time-In recorded successfully.")
+            self.update_result("Time-In recorded successfully.", color="green")
             self.fetch_recent_logs()
         except requests.RequestException as e:
-            self.update_result(f"Error recording Time-In: {e}")
+            self.update_result(f"Error recording Time-In: {e}", color="red")
 
     def record_time_out(self, rfid_number):
         if not self.get_rfid_schedule(rfid_number):
-            self.update_result("Access denied: Not within scheduled time.")
+            self.update_result("Access denied: Not within scheduled time.", color="red")
             return
 
         try:
@@ -1006,17 +1006,17 @@ class AttendanceApp:
             if not current_time_data:
                 return
             if not self.check_time_in_record(rfid_number):
-                self.update_result("No Time-In record found for this RFID. Cannot record Time-Out.")
+                self.update_result("No Time-In record found for this RFID. Cannot record Time-Out.", color="red")
                 return
 
             url = f"{TIME_OUT_URL}?rfid_number={rfid_number}&time_out={current_time_data['current_time']}"
             response = requests.put(url)
             response.raise_for_status()
             print("Time-Out recorded successfully.")
-            self.update_result("Time-Out recorded successfully.")
+            self.update_result("Time-Out recorded successfully.", color="green")
             self.fetch_recent_logs()
         except requests.RequestException as e:
-            self.update_result(f"Error recording Time-Out: {e}")
+            self.update_result(f"Error recording Time-Out: {e}", color="red")
 
     def clear_data(self):
         self.student_number_entry.delete(0, tk.END)
@@ -1025,8 +1025,9 @@ class AttendanceApp:
         self.section_entry.delete(0, tk.END)
         self.error_label.config(text="")
 
-    def update_result(self, message):
-        self.error_label.config(text=message)
+    def update_result(self, message, color="green"):
+        """Update the result label with a message and specified color."""
+        self.error_label.config(text=message, fg=color)  # Set the text and color
         self.root.after(3000, self.clear_result)  # Schedule to clear the message after 3 seconds
 
     def clear_result(self):

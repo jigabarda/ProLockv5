@@ -510,9 +510,9 @@ class AttendanceApp:
 
     def update_clock(self):
         """Update the clock label with the current time."""
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        current_time = datetime.now().strftime("%A %d-%m-%Y %H:%M:%S")
         self.clock_label.config(text=current_time)
-        self.root.after(1000, self.update_clock)  # Update the
+        self.root.after(1000, self.update_clock)
 
     def exit_full_screen(self, event=None):
         """Exit full screen mode."""

@@ -12,16 +12,6 @@ from datetime import datetime, timedelta
 import pyttsx3  # Import pyttsx3 for text-to-speech
 
 
-# Define get_next_fingerprint_id function
-def get_next_fingerprint_id():
-    """Fetch the next available fingerprint ID from the sensor storage."""
-    max_ids = 127  # Assuming the sensor can store up to 127 fingerprints
-    for i in range(1, max_ids + 1):
-        if finger.load_model(i) != adafruit_fingerprint.OK:
-            return i
-    return max_ids + 1  # This should not happen if the sensor's capacity is not exceeded
-
-
 # API URLs for Fingerprint, NFC, and Current Date-Time
 FINGERPRINT_API_URL = "https://prolocklogger.pro/api/getuserbyfingerprint/"
 TIME_IN_FINGERPRINT_URL = "https://prolocklogger.pro/api/logs/time-in/fingerprint"
@@ -56,10 +46,6 @@ GPIO.setup(BUZZER_PIN, GPIO.OUT)
 # Initialize serial connection for the fingerprint sensor
 uart = serial.Serial("/dev/ttyUSB0", baudrate=57600, timeout=1)
 finger = adafruit_fingerprint.Adafruit_Fingerprint(uart)
-
-# Initialize the next fingerprint ID globally
-next_fingerprint_id = get_next_fingerprint_id()  # Call the function here
-
 
 # Initialize Tkinter window
 def center_window(window, width, height):
@@ -269,7 +255,8 @@ class FingerprintEnrollment:
         self.attendance_app.start_fingerprint_scanning()  # Start fingerprint scanning when returning to attendance
 
     def enroll_fingerprint(self, email):
-        global next_fingerprint_id  # Use the global variable
+        """Enroll a fingerprint for a faculty member, ensuring it's not already registered."""
+        global next_fingerprint_id
 
         print("Waiting for image...")
         # Attempt to capture the first image
@@ -310,9 +297,6 @@ class FingerprintEnrollment:
             messagebox.showwarning("Error", "Failed to create fingerprint model from images.")
             return False
 
-        # Ensure next_fingerprint_id is up-to-date before storing the model
-        next_fingerprint_id = get_next_fingerprint_id()
-
         print(f"Storing model at location #{next_fingerprint_id}...")
         if finger.store_model(next_fingerprint_id) != adafruit_fingerprint.OK:
             messagebox.showwarning("Error", "Failed to store fingerprint model.")
@@ -346,6 +330,23 @@ class FingerprintEnrollment:
         except requests.RequestException as e:
             messagebox.showerror("Error", f"Error posting fingerprint data: {e}")
 
+    def get_highest_fingerprint_id(self):
+        try:
+            # Read all stored fingerprint templates
+            if finger.read_templates() != adafruit_fingerprint.OK:
+                return 0  # Return 0 if no fingerprints are stored
+
+            # Find the highest ID among the stored fingerprints
+            if finger.templates:
+                return max(finger.templates)
+            else:
+                return 0
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to read stored fingerprints: {e}")
+            return 0
+
+    # Set the next fingerprint ID based on the highest ID found in the sensor
+    next_fingerprint_id = get_highest_fingerprint_id() + 1
 
 class AttendanceApp:
     def __init__(self, root):
@@ -892,11 +893,11 @@ class AttendanceApp:
                 self.logs_tree.insert("", "end", values=(
                     log.get('date', 'N/A'),
                     log.get('user_name', 'N/A'),
-                    log.get('pc_name', 'N/A'),
+                    log.get('seat_id', 'N/A'),
                     log.get('user_number', 'N/A'),
                     log.get('year', 'N/A'),
                     log.get('block_name', 'N/A'),
-                    log.get('role_name', 'N/A'),
+                    log.get('assigned_instructor', 'N/A'),
                     log.get('time_in', 'N/A'),
                     log.get('time_out', 'N/A')
                 ))
@@ -990,11 +991,13 @@ class AttendanceApp:
             url = f"{TIME_IN_URL}?rfid_number={rfid_number}&time_in={current_time_data['current_time']}&year={year}&user_name={user_name}&role_id=3"
             response = requests.put(url)
             response.raise_for_status()
+
             print("Time-In recorded successfully.")
             self.update_result("Time-In recorded successfully.", color="green")
             self.fetch_recent_logs()
         except requests.RequestException as e:
             self.update_result(f"Error recording Time-In: {e}", color="red")
+            print(url)
 
     def record_time_out(self, rfid_number):
         if not self.get_rfid_schedule(rfid_number):

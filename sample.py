@@ -678,6 +678,51 @@ class AttendanceApp:
             print("Request Error", f"Failed to connect to API: {e}")
             return False
 
+    def get_schedule_mock_up(self, fingerprint_id):
+        try:
+            current_time_data = self.fetch_current_date_time()
+            if not current_time_data:
+                print("Error: Could not fetch current date and time from API.")
+                return False
+
+            current_day = current_time_data.get('day_of_week')
+            current_time = current_time_data.get('current_time')
+            current_date = datetime.now().date()  # Fetch current date
+
+            if not current_day or not current_time:
+                print("Error: Invalid response from current date-time API.")
+                return False
+
+            print(f"Current Day from API: {current_day}, Current Time from API: {current_time}")
+
+            response = requests.get(f"{LAB_SCHEDULE_FINGERPRINT_URL}{fingerprint_id}")
+            response.raise_for_status()
+            schedules = response.json()
+
+            for schedule in schedules:
+                specific_date = schedule.get('specific_date')
+                start_time = schedule.get('class_start')
+                end_time = schedule.get('class_end')
+
+                if specific_date and start_time and end_time:
+                    # Convert specific_date string to a date object
+                    schedule_date = datetime.strptime(specific_date, '%Y-%m-%d').date()
+
+                    print(f"Checking Schedule: Date: {schedule_date}, Start: {start_time}, End: {end_time}")
+
+                    # Check if the schedule date matches the current date
+                    if schedule_date == current_date:
+                        # Check if the current time is within the class start and end time
+                        if start_time <= current_time <= end_time:
+                            print("Access allowed based on schedule.")
+                            return True
+
+            print("Access denied: No matching schedule found or not within allowed time.")
+            return False
+        except requests.RequestException as e:
+            print("Request Error", f"Failed to connect to API: {e}")
+            return False
+
     def get_rfid_schedule(self, rfid_number):
         try:
             current_time_data = self.fetch_current_date_time()
@@ -828,7 +873,18 @@ class AttendanceApp:
 
             if name:
                 print(f"Fingerprint belongs to {name}. Checking access schedule...")
-                if self.get_schedule(self.finger.finger_id):  # Check if the current time is within the allowed schedule
+
+                # Determine whether to use the mock-up schedule check or the regular one
+                is_makeup_class = self.check_if_makeup_class(self.finger.finger_id)  # Replace with your logic to check
+
+                if is_makeup_class:
+                    # Use the mock-up schedule check
+                    schedule_check = self.get_schedule_mock_up(self.finger.finger_id)
+                else:
+                    # Use the regular schedule check
+                    schedule_check = self.get_schedule(self.finger.finger_id)
+
+                if schedule_check:  # Check if the current time is within the allowed schedule
                     # Fetch current time for comparison
                     current_time_data = self.fetch_current_date_time()
                     if not current_time_data:
@@ -855,6 +911,22 @@ class AttendanceApp:
 
             # Allow 5 seconds before the next fingerprint scan
             time.sleep(5)
+
+    def check_if_makeup_class(self, fingerprint_id):
+        # Replace with your logic to determine if this is a make-up class or not
+        # Example: Fetch schedule and check the 'is_makeup_class' field
+        try:
+            response = requests.get(f"{LAB_SCHEDULE_FINGERPRINT_URL}{fingerprint_id}")
+            response.raise_for_status()
+            schedules = response.json()
+
+            for schedule in schedules:
+                if schedule.get('is_makeup_class') == 1:
+                    return True
+            return False
+        except requests.RequestException as e:
+            print("Request Error", f"Failed to check for make-up class: {e}")
+            return False
 
     def check_failed_attempts(self, failed_attempts):
         if failed_attempts >= 3:

@@ -65,7 +65,7 @@ class FingerprintEnrollment:
         self.root = root
         self.attendance_app = attendance_app
         self.frame = ttk.Frame(root)
-        self.next_fingerprint_id = self.get_highest_fingerprint_id() + 1  # Initialize next fingerprint ID
+        self.next_fingerprint_id = self.get_highest_fingerprint_id() + 1  # Properly initialize next_fingerprint_id
 
         # Create a canvas to handle the background color as ttk.Frame does not directly support bg color
         self.canvas = tk.Canvas(self.frame, bg='#2D3F7C')
@@ -274,8 +274,6 @@ class FingerprintEnrollment:
 
     def enroll_fingerprint(self, email):
         """Enroll a fingerprint for a faculty member, ensuring it's not already registered."""
-        global next_fingerprint_id
-
         print("Waiting for image...")
         # Attempt to capture the first image
         while finger.get_image() != adafruit_fingerprint.OK:
@@ -315,14 +313,15 @@ class FingerprintEnrollment:
             messagebox.showwarning("Error", "Failed to create fingerprint model from images.")
             return False
 
-        print(f"Storing model at location #{next_fingerprint_id}...")
-        if finger.store_model(next_fingerprint_id) != adafruit_fingerprint.OK:
+        # Use self.next_fingerprint_id here
+        print(f"Storing model at location #{self.next_fingerprint_id}...")
+        if finger.store_model(self.next_fingerprint_id) != adafruit_fingerprint.OK:
             messagebox.showwarning("Error", "Failed to store fingerprint model.")
             return False
 
         # Post the fingerprint data to the API
-        self.post_fingerprint(email, next_fingerprint_id)
-        next_fingerprint_id += 1  # Increment the ID for the next registration
+        self.post_fingerprint(email, self.next_fingerprint_id)
+        self.next_fingerprint_id += 1  # Increment the ID for the next registration
         return True
 
     def on_enroll_button_click(self):

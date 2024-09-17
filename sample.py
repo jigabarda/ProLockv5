@@ -12,6 +12,16 @@ from datetime import datetime, timedelta
 import pyttsx3  # Import pyttsx3 for text-to-speech
 
 
+# Define get_next_fingerprint_id function
+def get_next_fingerprint_id():
+    """Fetch the next available fingerprint ID from the sensor storage."""
+    max_ids = 127  # Assuming the sensor can store up to 127 fingerprints
+    for i in range(1, max_ids + 1):
+        if finger.load_model(i) != adafruit_fingerprint.OK:
+            return i
+    return max_ids + 1  # This should not happen if the sensor's capacity is not exceeded
+
+
 # API URLs for Fingerprint, NFC, and Current Date-Time
 FINGERPRINT_API_URL = "https://prolocklogger.pro/api/getuserbyfingerprint/"
 TIME_IN_FINGERPRINT_URL = "https://prolocklogger.pro/api/logs/time-in/fingerprint"
@@ -47,6 +57,10 @@ GPIO.setup(BUZZER_PIN, GPIO.OUT)
 uart = serial.Serial("/dev/ttyUSB0", baudrate=57600, timeout=1)
 finger = adafruit_fingerprint.Adafruit_Fingerprint(uart)
 
+# Initialize the next fingerprint ID globally
+next_fingerprint_id = get_next_fingerprint_id()  # Call the function here
+
+
 # Initialize Tkinter window
 def center_window(window, width, height):
     screen_width = window.winfo_screenwidth()
@@ -62,6 +76,7 @@ class FingerprintEnrollment:
         self.root = root
         self.attendance_app = attendance_app
         self.frame = ttk.Frame(root)
+        self.next_fingerprint_id = self.get_highest_fingerprint_id() + 1  # Initialize next fingerprint ID
 
         # Create a canvas to handle the background color as ttk.Frame does not directly support bg color
         self.canvas = tk.Canvas(self.frame, bg='#2D3F7C')
@@ -181,21 +196,18 @@ class FingerprintEnrollment:
         self.hide()
         self.attendance_app.show()
 
-    def refresh_table(self):
-        """Refresh the table with data from the Laravel API."""
-        # Clear existing rows
-        for row in self.tree.get_children():
-            self.tree.delete(row)
-
-        # Fetch and insert faculty data
-        faculty_data = self.fetch_faculty_data()
-        for faculty in faculty_data:
-            self.tree.insert("", tk.END, values=(faculty['name'], faculty['email']))
-
-        # Fetch and insert admin data
-        admin_data = self.fetch_admin_data()
-        for admin in admin_data:
-            self.tree.insert("", tk.END, values=(admin['name'], admin['email']))
+    def get_user(self, fingerprint_id):
+        """Fetch user information by fingerprint ID."""
+        try:
+            response = requests.get(f"{FINGERPRINT_API_URL}{fingerprint_id}")
+            response.raise_for_status()
+            data = response.json()
+            if 'name' in data:
+                return data['name']
+            return None
+        except requests.RequestException as e:
+            messagebox.showerror("Request Error", f"Failed to connect to API: {e}")
+            return None
 
     def fetch_faculty_data(self):
         """Fetch faculty data from the Laravel API, excluding those with exactly two or more registered fingerprint IDs."""
@@ -203,10 +215,13 @@ class FingerprintEnrollment:
             response = requests.get(FACULTIES_URL)
             response.raise_for_status()
             data = response.json()
+
+            # Filter out faculty members who have exactly two or more fingerprints registered
             filtered_data = [
                 faculty for faculty in data
                 if faculty.get('fingerprint_id') is None or len(faculty.get('fingerprint_id', [])) < 2
             ]
+
             return filtered_data
 
         except requests.RequestException as e:
@@ -219,40 +234,54 @@ class FingerprintEnrollment:
             response = requests.get(ADMIN_URL)
             response.raise_for_status()
             data = response.json()
+
+            # Filter out admin members who have exactly two or more fingerprints registered
             filtered_data = [
                 admin for admin in data
                 if admin.get('fingerprint_id') is None or len(admin.get('fingerprint_id', [])) < 2
             ]
+
             return filtered_data
 
         except requests.RequestException as e:
-            messagebox.showerror("Error", f"Error fetching admin data: {e}")
+            messagebox.showerror("Error", f"Error fetching faculty data: {e}")
             return []
 
-    def on_enroll_button_click(self):
-        """Callback function for the enroll button."""
-        selected_item = self.tree.selection()
-        if not selected_item:
-            messagebox.showwarning("Selection Error", "Please select a row from the table.")
-            return
+    def post_fingerprint(self, email, fingerprint_id):
+        """Post fingerprint data to the Laravel API."""
+        try:
+            url = f"{ENROLL_URL}?email={email}&fingerprint_id={fingerprint_id}"
+            response = requests.put(url)
+            response.raise_for_status()
+            messagebox.showinfo("Success", "Fingerprint enrolled successfully")
+        except requests.RequestException as e:
+            messagebox.showerror("Error", f"Error posting fingerprint data: {e}")
 
-        item = self.tree.item(selected_item)
-        table_name = item['values'][0]  # Assuming name is in the first column
-        email = item['values'][1]  # Assuming email is in the second column
+    def get_highest_fingerprint_id(self):
+        """Fetch the highest fingerprint ID stored in the sensor."""
+        try:
+            # Read all stored fingerprint templates
+            if finger.read_templates() != adafruit_fingerprint.OK:
+                return 0  # Return 0 if no fingerprints are stored
 
-        # Enroll fingerprint with the selected email
-        success = self.enroll_fingerprint(email)
-        if not success:
-            messagebox.showwarning("Enrollment Error", "Failed to enroll fingerprint.")
-        else:
-            # Refresh the table to update or remove the faculty if they now have 2 fingerprints
-            self.refresh_table()
+            # Find the highest ID among the stored fingerprints
+            if finger.templates:
+                return max(finger.templates)
+            else:
+                return 0
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to read stored fingerprints: {e}")
+            return 0
 
-    def back_to_attendance(self):
-        """Hide current frame and show AttendanceApp frame."""
-        self.hide()
-        self.attendance_app.show()
-        self.attendance_app.start_fingerprint_scanning()  # Start fingerprint scanning when returning to attendance
+    def check_fingerprint_exists(self):
+        """Check if the current fingerprint is already registered."""
+        print("Searching for existing fingerprint...")
+        if finger.finger_search() == adafruit_fingerprint.OK:
+            existing_user = self.get_user(finger.finger_id)
+            if existing_user:
+                messagebox.showwarning("Error", f"Fingerprint already registered to {existing_user}")
+                return True
+        return False
 
     def enroll_fingerprint(self, email):
         """Enroll a fingerprint for a faculty member, ensuring it's not already registered."""
@@ -307,46 +336,39 @@ class FingerprintEnrollment:
         next_fingerprint_id += 1  # Increment the ID for the next registration
         return True
 
-    def get_user(self, fingerprint_id):
-        """Fetch user information by fingerprint ID."""
-        try:
-            response = requests.get(f"{FINGERPRINT_API_URL}{fingerprint_id}")
-            response.raise_for_status()
-            data = response.json()
-            if 'name' in data:
-                return data['name']
-            return None
-        except requests.RequestException as e:
-            messagebox.showerror("Request Error", f"Failed to connect to API: {e}")
-            return None
+    def on_enroll_button_click(self):
+        """Callback function for the enroll button."""
+        selected_item = self.tree.selection()
+        if not selected_item:
+            messagebox.showwarning("Selection Error", "Please select a row from the table.")
+            return
 
-    def post_fingerprint(self, email, fingerprint_id):
-        """Post fingerprint data to the Laravel API."""
-        try:
-            url = f"{ENROLL_URL}?email={email}&fingerprint_id={fingerprint_id}"
-            response = requests.put(url)
-            response.raise_for_status()
-            messagebox.showinfo("Success", "Fingerprint enrolled successfully")
-        except requests.RequestException as e:
-            messagebox.showerror("Error", f"Error posting fingerprint data: {e}")
+        item = self.tree.item(selected_item)
+        table_name = item['values'][0]  # Assuming name is in the first column
+        email = item['values'][1]  # Assuming email is in the second column
 
-    def get_highest_fingerprint_id(self):
-        try:
-            # Read all stored fingerprint templates
-            if finger.read_templates() != adafruit_fingerprint.OK:
-                return 0  # Return 0 if no fingerprints are stored
+        # Enroll fingerprint with the selected email
+        success = self.enroll_fingerprint(email)
+        if not success:
+            messagebox.showwarning("Enrollment Error", "Failed to enroll fingerprint.")
+        else:
+            # Refresh the table to update or remove the faculty if they now have 2 fingerprints
+            self.refresh_table()
 
-            # Find the highest ID among the stored fingerprints
-            if finger.templates:
-                return max(finger.templates)
-            else:
-                return 0
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to read stored fingerprints: {e}")
-            return 0
+    def refresh_table(self):
+        """Refresh the table with data from the Laravel API."""
+        for row in self.tree.get_children():
+            self.tree.delete(row)
 
-    # Set the next fingerprint ID based on the highest ID found in the sensor
-    next_fingerprint_id = get_highest_fingerprint_id() + 1
+        faculty_data = self.fetch_faculty_data()
+        for faculty in faculty_data:
+            # Only display faculty who have less than 2 fingerprints registered
+            self.tree.insert("", tk.END, values=(faculty['name'], faculty['email']))
+
+        admin_data = self.fetch_admin_data()
+        for admin in admin_data:
+            # Only display admin who have less than 2 fingerprints registered
+            self.tree.insert("", tk.END, values=(admin['name'], admin['email']))
 
 class AttendanceApp:
     def __init__(self, root):

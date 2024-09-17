@@ -11,17 +11,6 @@ import requests
 from datetime import datetime, timedelta
 import pyttsx3  # Import pyttsx3 for text-to-speech
 
-
-# Define get_next_fingerprint_id function
-def get_next_fingerprint_id():
-    """Fetch the next available fingerprint ID from the sensor storage."""
-    max_ids = 127  # Assuming the sensor can store up to 127 fingerprints
-    for i in range(1, max_ids + 1):
-        if finger.load_model(i) != adafruit_fingerprint.OK:
-            return i
-    return max_ids + 1  # This should not happen if the sensor's capacity is not exceeded
-
-
 # API URLs for Fingerprint, NFC, and Current Date-Time
 FINGERPRINT_API_URL = "https://prolocklogger.pro/api/getuserbyfingerprint/"
 TIME_IN_FINGERPRINT_URL = "https://prolocklogger.pro/api/logs/time-in/fingerprint"

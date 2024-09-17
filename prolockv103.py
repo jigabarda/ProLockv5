@@ -737,7 +737,7 @@ class AttendanceApp:
                 print("Error: Invalid response from current date-time API.")
                 return False
 
-            print(f"Current Day from API: {current_day}, Current Time from API: {current_time}")
+            print(f"Current Day from API: {current_day}, Current Time: {current_time}")
 
             response = requests.get(f"{LAB_SCHEDULE_URL}{rfid_number}")
             response.raise_for_status()
@@ -747,15 +747,61 @@ class AttendanceApp:
                 schedule_day = schedule.get('day_of_the_week')
                 start_time = schedule.get('class_start')
                 end_time = schedule.get('class_end')
+                is_makeup_class = schedule.get('is_makeup_class', 0)
+                specific_date = schedule.get('specific_date', 'N/A')
 
-                if schedule_day and start_time and end_time:
-                    print(f"Checking Schedule: Day: {schedule_day}, Start: {start_time}, End: {end_time}")
-
-                    if schedule_day == current_day and start_time <= current_time <= end_time:
-                        print("Access allowed based on schedule.")
+                if is_makeup_class == 0 and schedule_day and start_time and end_time:
+                    print(f"Checking Regular Schedule: Day: {schedule_day}, Start: {start_time}, End: {end_time}")
+                    if schedule_day.lower() == current_day.lower() and start_time <= current_time <= end_time:
+                        print("Access allowed based on regular schedule.")
                         return True
 
-            print("Access denied: No matching schedule found or not within allowed time.")
+            print("Access denied: No matching regular schedule found or not within allowed time.")
+            return False
+        except requests.RequestException as e:
+            print(f"Error fetching or checking schedule: {e}")
+            return False
+
+    def get_rfid_schedule_mock_up(self, rfid_number):
+        try:
+            current_time_data = self.fetch_current_date_time()
+            if not current_time_data:
+                print("Error: Could not fetch current date and time from API.")
+                return False
+
+            current_time = current_time_data.get('current_time')
+            current_date = datetime.now().date()  # Fetch current date
+
+            if not current_time:
+                print("Error: Invalid response from current date-time API.")
+                return False
+
+            print(f"Current Date: {current_date}, Current Time: {current_time}")
+
+            response = requests.get(f"{LAB_SCHEDULE_URL}{rfid_number}")
+            response.raise_for_status()
+            schedules = response.json()
+
+            for schedule in schedules:
+                specific_date = schedule.get('specific_date')
+                start_time = schedule.get('class_start')
+                end_time = schedule.get('class_end')
+                is_makeup_class = schedule.get('is_makeup_class', 0)
+
+                if is_makeup_class == 1 and specific_date and start_time and end_time:
+                    # Convert specific_date string to a date object
+                    if specific_date != 'N/A':
+                        schedule_date = datetime.strptime(specific_date, '%Y-%m-%d').date()
+                        print(f"Checking Make-Up Schedule: Date: {schedule_date}, Start: {start_time}, End: {end_time}")
+
+                        # Check if the schedule date matches the current date
+                        if schedule_date == current_date:
+                            # Check if the current time is within the class start and end time
+                            if start_time <= current_time <= end_time:
+                                print("Access allowed based on make-up schedule.")
+                                return True
+
+            print("Access denied: No matching make-up schedule found or not within allowed time.")
             return False
         except requests.RequestException as e:
             print(f"Error fetching or checking schedule: {e}")
@@ -1062,7 +1108,15 @@ class AttendanceApp:
             return False
 
     def record_time_in(self, rfid_number, user_name, year):
-        if not self.get_rfid_schedule(rfid_number):
+        # Determine whether to use the mock-up schedule check or the regular one
+        is_makeup_class = self.check_if_makeup_class_rfid(rfid_number)
+
+        if is_makeup_class:
+            schedule_check = self.get_rfid_schedule_mock_up(rfid_number)
+        else:
+            schedule_check = self.get_rfid_schedule(rfid_number)
+
+        if not schedule_check:
             self.update_result("Access denied: Not within scheduled time.", color="red")
             return
 
@@ -1082,7 +1136,14 @@ class AttendanceApp:
             print(url)
 
     def record_time_out(self, rfid_number):
-        if not self.get_rfid_schedule(rfid_number):
+        is_makeup_class = self.check_if_makeup_class_rfid(rfid_number)
+
+        if is_makeup_class:
+            schedule_check = self.get_rfid_schedule_mock_up(rfid_number)
+        else:
+            schedule_check = self.get_rfid_schedule(rfid_number)
+
+        if not schedule_check:
             self.update_result("Access denied: Not within scheduled time.", color="red")
             return
 

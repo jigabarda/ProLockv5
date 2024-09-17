@@ -807,6 +807,25 @@ class AttendanceApp:
             print(f"Error fetching or checking schedule: {e}")
             return False
 
+    def check_if_makeup_class_rfid(self, rfid_number):
+        """
+        Check if the class associated with the given RFID number is a make-up class.
+        Returns True if any class is a make-up class; otherwise, returns False.
+        """
+        try:
+            response = requests.get(f"{LAB_SCHEDULE_URL}{rfid_number}")
+            response.raise_for_status()
+            schedules = response.json()
+
+            for schedule in schedules:
+                # Check if 'is_makeup_class' is 1, indicating a make-up class
+                if schedule.get('is_makeup_class') == 1:
+                    return True
+            return False
+        except requests.RequestException as e:
+            print(f"Error checking if class is a make-up class: {e}")
+            return False
+
     def check_time_in_record_fingerprint(self, fingerprint_id):
         try:
             url = f"{RECENT_LOGS_FINGERPRINT_URL2}?fingerprint_id={fingerprint_id}"
@@ -1108,7 +1127,7 @@ class AttendanceApp:
             return False
 
     def record_time_in(self, rfid_number, user_name, year):
-        # Determine whether to use the mock-up schedule check or the regular one
+        # Check if the class is a make-up class or a regular class
         is_makeup_class = self.check_if_makeup_class_rfid(rfid_number)
 
         if is_makeup_class:
@@ -1133,9 +1152,9 @@ class AttendanceApp:
             self.fetch_recent_logs()
         except requests.RequestException as e:
             self.update_result(f"Error recording Time-In: {e}", color="red")
-            print(url)
 
     def record_time_out(self, rfid_number):
+        # Check if the class is a make-up class or a regular class
         is_makeup_class = self.check_if_makeup_class_rfid(rfid_number)
 
         if is_makeup_class:
@@ -1164,7 +1183,7 @@ class AttendanceApp:
         except requests.RequestException as e:
             self.update_result(f"Error recording Time-Out: {e}", color="red")
 
-    def clear_data(self):
+def clear_data(self):
         self.student_number_entry.delete(0, tk.END)
         self.name_entry.delete(0, tk.END)
         self.year_entry.delete(0, tk.END)

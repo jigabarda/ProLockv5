@@ -182,6 +182,7 @@ class FingerprintEnrollment:
         """Hide current frame and show AttendanceApp frame."""
         self.hide()
         self.attendance_app.show()
+        self.attendance_app.start_fingerprint_scanning()  # Restart fingerprint scanning
 
     def get_user(self, fingerprint_id):
         """Fetch user information by fingerprint ID."""

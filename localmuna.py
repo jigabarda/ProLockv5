@@ -11,12 +11,12 @@ import requests
 from datetime import datetime, timedelta
 import pyttsx3  # Import pyttsx3 for text-to-speech
 
-API_URL = 'http://192.168.1.21:8000/api'
+API_URL = 'http://192.168.1.21/api'
 
 # API URLs for Fingerprint, NFC, and Current Date-Time
-FINGERPRINT_API_URL = f'{API_URL}/getuserbyfingerprint/'
-TIME_IN_FINGERPRINT_URL = f'{API_URL}/logs/time-in/fingerprint'
-TIME_OUT_FINGERPRINT_URL = f'{API_URL}/logs/time-out/fingerprint'
+FINGERPRINT_API_URL = f'{API_URL}/getuserbyfingerprint/"
+TIME_IN_FINGERPRINT_URL = f'{API_URL}/logs/time-in/fingerprint"
+TIME_OUT_FINGERPRINT_URL = f'{API_URL}/logs/time-out/fingerprint"
 RECENT_LOGS_FINGERPRINT_URL2 = f'{API_URL}/recent-logs/by-fingerid'
 LAB_SCHEDULE_FINGERPRINT_URL = f'{API_URL}/lab-schedules/fingerprint/'
 
@@ -46,6 +46,9 @@ GPIO.setup(BUZZER_PIN, GPIO.OUT)
 # Initialize serial connection for the fingerprint sensor
 uart = serial.Serial("/dev/ttyUSB0", baudrate=57600, timeout=1)
 finger = adafruit_fingerprint.Adafruit_Fingerprint(uart)
+
+# Initialize the next fingerprint ID globally
+next_fingerprint_id = get_next_fingerprint_id()  # Call the function here
 
 
 # Initialize Tkinter window
@@ -182,6 +185,7 @@ class FingerprintEnrollment:
         """Hide current frame and show AttendanceApp frame."""
         self.hide()
         self.attendance_app.show()
+        self.attendance_app.start_fingerprint_scanning()  # Restart fingerprint scanning
 
     def get_user(self, fingerprint_id):
         """Fetch user information by fingerprint ID."""
@@ -1181,7 +1185,7 @@ class AttendanceApp:
         except requests.RequestException as e:
             self.update_result(f"Error recording Time-Out: {e}", color="red")
 
-    def clear_data(self):
+def clear_data(self):
         self.student_number_entry.delete(0, tk.END)
         self.name_entry.delete(0, tk.END)
         self.year_entry.delete(0, tk.END)
